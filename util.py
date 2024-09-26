@@ -1,12 +1,7 @@
-# Create arbitary M Matrix with dimensions N x N in complex space
-def random_matrix(N):
-    M = np.random.rand(N, N) + 1.0j * np.random.rand(N, N)
-    return M
+import numpy as np
 
-
-# Determine matrix if unitary
-
-def unitary_check(M):
+# from Jacob's code
+def unitary_check(M: np.ndarray) -> bool:
     '''
     Input: Random matrix M
     Output: Boolean variable: True or False
