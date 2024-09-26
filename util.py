@@ -12,7 +12,7 @@ def is_unitary(M: np.ndarray) -> bool:
     ''' Returns whether M is unitary '''
     return np.allclose(np.identity(M.shape[0]), M @ M.conj().T)
 
-def make_quantum(x: list[complex]):
+def make_quantum(x: list) -> np.ndarray:
     """
     Create a valid normalized quantum state from an input list of complex numbers.
      - list is assumed to be probabilities/ratios of the state and not amplitudes
