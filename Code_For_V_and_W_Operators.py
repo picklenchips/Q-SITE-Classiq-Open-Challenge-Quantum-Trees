@@ -1,12 +1,13 @@
 import numpy as np
-import math as
+import math
 
+# you should calculate the norms once in normalization and 
+# pass them in instead of conmputing them every time
 def compute_Cm(M, m, x0, t):
     norm_x0 = np.linalg.norm(x0)
     frobenius_norm = np.linalg.norm(M, 'fro')
     Cm = norm_x0 * (frobenius_norm ** m) * (t ** m) / math.factorial(m)
     return Cm
-
 
 def compute_Dn(M, n, b, t):
     norm_b = np.linalg.norm(b)
@@ -14,13 +15,13 @@ def compute_Dn(M, n, b, t):
     Dn = norm_b * (frobenius_norm * t) ** (n - 1) * t / math.factorial(n)
     return Dn
 
-
 def normalization(M, k, x0, b, t):
     '''
     call this for the kth sum, uses Cm and Dn
     '''
     Cvals, Dvals = [], []
     # compute sum of Cm and Dn
+    C = D = 0
     for m in range(k + 1):
         Cm = compute_Cm(M, m, x0, t)
         Cvals.append(Cm)
