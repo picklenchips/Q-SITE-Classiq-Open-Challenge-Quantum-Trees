@@ -1,5 +1,0 @@
-qfunc main(output work: qbit[], output taylor: qnum) {
-  allocate(1.0, work);
-  allocate(2.0, taylor);
-  inplace_prepare_amplitudes([0.7071, 0.7071], 0.01, work);
-}
