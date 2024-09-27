@@ -15,7 +15,7 @@ def compute_Dn(M, n, b, t):
     Dn = norm_b * (frobenius_norm * t) ** (n - 1) * t / math.factorial(n)
     return Dn
 
-def normalization(M, k, x0, b, t):
+def normalization(A, k, x0, b, t):
     '''
     call this for the kth sum, uses Cm and Dn
     '''
