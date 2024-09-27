@@ -1,0 +1,46 @@
+qfunc prepare_registers(work: qbit[], taylor: qnum) {
+  inplace_prepare_amplitudes([0.7071, 0.7071], 0.01, work);
+  inplace_prepare_amplitudes([
+    0.6768,
+    0.6014,
+    0.3778,
+    0.1938
+  ], 0.01, taylor);
+}
+
+qfunc do_entangling(taylor: qnum, work: qbit[]) {
+  control (taylor == 0) {
+    unitary([
+      [1.0, 0.0],
+      [0.0, 1.0]
+    ], work);
+  }
+  control (taylor == 1) {
+    unitary([
+      [0.0, 1.0],
+      [(-1.0), 0.0]
+    ], work);
+  }
+  control (taylor == 2) {
+    unitary([
+      [(-1.0), 0.0],
+      [0.0, (-1.0)]
+    ], work);
+  }
+  control (taylor == 3) {
+    unitary([
+      [0.0, (-1.0)],
+      [1.0, 0.0]
+    ], work);
+  }
+}
+
+qfunc main(output work: qbit[], output taylor: qnum) {
+  allocate(1, work);
+  allocate(2, taylor);
+  within {
+    prepare_registers(work, taylor);
+  } apply {
+    do_entangling(taylor, work);
+  }
+}
