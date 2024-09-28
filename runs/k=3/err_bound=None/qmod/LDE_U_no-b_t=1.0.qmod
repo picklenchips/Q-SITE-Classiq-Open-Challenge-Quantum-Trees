@@ -43,7 +43,7 @@ qfunc main(output work: qbit[], output taylor: qnum) {
   } apply {
     do_entangling(work, taylor);
   }
-  if (True) {
+  if (False) {
     H(work[0]);
   } else {
     I(work[0]);
