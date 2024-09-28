@@ -7,6 +7,12 @@ import matplotlib.cm as mplcm
 import matplotlib.colorbar as mplcb
 SAVEDIR = "."
 SAVEEXT = ".png"
+from classiq.synthesis import synthesize, set_constraints, set_execution_preferences, set_preferences, show
+from classiq.executor import execute
+from classiq.execution import ExecutionPreferences
+from classiq.interface.generator.quantum_program import QuantumProgram
+from classiq import Constraints, Preferences
+import time
 
 #################################
 #     UTILITY FUNCTIONS         #
@@ -29,7 +35,7 @@ def quantum_unvectorize(norm, A: list | np.ndarray) -> np.ndarray:
     note: cannot recover any phase information! """
     return (norm * A)**2
 
-def quantum_encode(x: list | np.ndarray) -> np.ndarray:
+def quantum_encode(x: list | np.ndarray) -> tuple[float, list[float]]:
     """
     Create a valid normalized quantum state from an input list of complex numbers.
      - list is assumed to be probabilities/ratios of the state and 
@@ -152,7 +158,7 @@ def parse_classiq_result(N, rdict, print_info=True):
     out_map = rdict.output_qubits_map   
     vec_indices = out_map['work']         # tuple of indices
     nbits = 2**len(vec_indices)
-    y = np.zeros((nbits,))
+    y = np.zeros(nbits)
     lsb_right = rdict.counts_lsb_right  # whether output map starts from right or left of string
     counts_dict = rdict.counts
     # set all other qubits to be 0, then reconstruct state vector from counts
@@ -161,7 +167,7 @@ def parse_classiq_result(N, rdict, print_info=True):
     work_strings = get_work_strings(nqubits, vec_indices, lsb_right)
     # iterate from least-significant to most-significant bitstring
     for j, work_string in enumerate(work_strings):
-        if True:
+        if print_info:
             print(f'parsing |{work_string}> as x[{j}]')
         if work_string not in counts_dict:
             print(f"Work string {work_string} not found in counts!")
@@ -172,28 +178,16 @@ def parse_classiq_result(N, rdict, print_info=True):
     y = np.sqrt(y) * N**2
     return y
 
-from classiq.synthesis import synthesize, set_constraints, set_execution_preferences, set_preferences, show
-from classiq.executor import execute
-from classiq.execution import ExecutionPreferences
-from classiq.interface.generator.quantum_program import QuantumProgram
-from classiq import Constraints, Preferences
-import time
-
 def run_qmod(qmod, opt='depth', nshots=10000, job_name='',
-                save_qprog='', sim='Classiq',
-                open_circuit=True, print_info=True):
+             save_qprog='', sim='Classiq', open_circuit=False, print_info=True):
     """ optimize qmod with constraints and run it on a simulator 
         - sim = 'Classiq' or 'IBM', both classical simulators though
     """
     # set constraints and preferences
-    if sim == 'Classiq':
-        max_width = 25
-        qmod = set_preferences(qmod,
-            Preferences(backend_service_provider="Classiq",backend_name="simulator",
-                        timeout_seconds=600, optimization_timeout_seconds=120))
-    else:
-        return ValueError('other sims not implemented yet')
-    
+    max_width = 25
+    qmod = set_preferences(qmod,
+        Preferences(backend_service_provider="Classiq",backend_name="simulator",
+                    timeout_seconds=600, optimization_timeout_seconds=120))
     qmod = set_constraints(qmod,
         Constraints(max_width=max_width, optimization_parameter=opt))
     qmod = set_execution_preferences(qmod,
@@ -209,6 +203,7 @@ def run_qmod(qmod, opt='depth', nshots=10000, job_name='',
     circuit_width = QP.data.width
     circuit_depth = QP.transpiled_circuit.depth
     end_time = time.time()
+
     if print_info:
         print(f"\tcircuit synthesized in {end_time-start_time:.2f}s: width={circuit_width},depth={circuit_depth}")
     # open in viewer
