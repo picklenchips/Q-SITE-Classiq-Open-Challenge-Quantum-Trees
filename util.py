@@ -141,6 +141,37 @@ def write_qprog(qprog, fname):
     file.write(qprog)
     file.close()
 
+def parse_classiq_result(N, rdict, print_info=True):
+    """
+    returns the amplitude vector from the classiq results
+    - N: normalization factor to reconstruct vector with
+    - rdict: result dictionary from classiq
+    """
+    total_counts = rdict.num_shots
+    # reconstruct / parse state vector
+    out_map = rdict.output_qubits_map   
+    vec_indices = out_map['work']         # tuple of indices
+    nbits = 2**len(vec_indices)
+    y = np.zeros((nbits,))
+    lsb_right = rdict.counts_lsb_right  # whether output map starts from right or left of string
+    counts_dict = rdict.counts
+    # set all other qubits to be 0, then reconstruct state vector from counts
+    nqubits = len(list(counts_dict.keys())[0])
+    # only care about all ancillas being zero
+    work_strings = get_work_strings(nqubits, vec_indices, lsb_right)
+    # iterate from least-significant to most-significant bitstring
+    for j, work_string in enumerate(work_strings):
+        if True:
+            print(f'parsing |{work_string}> as x[{j}]')
+        if work_string not in counts_dict:
+            print(f"Work string {work_string} not found in counts!")
+            continue
+        # convert to probabilities = amp^2
+        y[j] = counts_dict[work_string] / total_counts
+    # convert to amplitudes and multiply by total normalization
+    y = np.sqrt(y) * N**2
+    return y
+
 #
 # PREVIOUS UTILITY FUNCTIONS
 # BY BEN KROUL
