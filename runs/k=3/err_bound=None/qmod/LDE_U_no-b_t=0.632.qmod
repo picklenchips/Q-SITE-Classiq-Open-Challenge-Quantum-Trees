@@ -8,7 +8,7 @@ qfunc prepare_registers(work: qbit[], taylor: qnum) {
   ], 0.01, taylor);
 }
 
-qfunc do_entangling(taylor: qnum, work: qbit[]) {
+qfunc do_entangling(work: qbit[], taylor: qnum) {
   control (taylor == 0) {
     unitary([
       [1.0, 0.0],
@@ -41,6 +41,11 @@ qfunc main(output work: qbit[], output taylor: qnum) {
   within {
     prepare_registers(work, taylor);
   } apply {
-    do_entangling(taylor, work);
+    do_entangling(work, taylor);
+  }
+  if (True) {
+    H(work[0]);
+  } else {
+    I(work[0]);
   }
 }

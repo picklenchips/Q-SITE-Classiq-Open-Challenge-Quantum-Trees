@@ -17,6 +17,18 @@ def is_unitary(M: np.ndarray) -> bool:
     ''' Returns whether M is unitary '''
     return np.allclose(np.identity(M.shape[0]), M @ M.conj().T)
 
+def quantum_vectorize(V: list | np.ndarray) -> tuple[float, np.ndarray]:
+    """ Convert vector of floats to (real) amplitude quantum vector """
+    norm = np.sqrt(np.sum(V))
+    # encode as amplitudes in quantum vector
+    A = np.sqrt(V) / norm
+    return norm, A
+
+def quantum_unvectorize(norm, A: list | np.ndarray) -> np.ndarray:
+    """ Convert quantum vector to real vector 
+    note: cannot recover any phase information! """
+    return (norm * A)**2
+
 def quantum_encode(x: list | np.ndarray) -> np.ndarray:
     """
     Create a valid normalized quantum state from an input list of complex numbers.
@@ -35,7 +47,7 @@ def quantum_encode(x: list | np.ndarray) -> np.ndarray:
         x = np.ones(len(x))
     # normalize
     # [1, 2, 3] -> [1, sqrt(2), sqrt(3)]/sqrt(6)
-    x = np.sqrt(x / np.sum(x))
+    norm, x = quantum_vectorize(x)
     assert isinstance(x, np.ndarray)  # for PyLance stupid type-setting
     # convert to Classiq-compatible list
     return x.tolist()

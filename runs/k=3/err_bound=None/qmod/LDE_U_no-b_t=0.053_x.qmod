@@ -1,10 +1,10 @@
 qfunc prepare_registers(work: qbit[], taylor: qnum) {
   inplace_prepare_amplitudes([0.7071, 0.7071], 0.01, work);
   inplace_prepare_amplitudes([
-    0.6942,
-    0.5959,
-    0.3617,
-    0.1793
+    0.974,
+    0.2235,
+    0.0362,
+    0.0048
   ], 0.01, taylor);
 }
 
@@ -43,7 +43,7 @@ qfunc main(output work: qbit[], output taylor: qnum) {
   } apply {
     do_entangling(work, taylor);
   }
-  if (True) {
+  if (False) {
     H(work[0]);
   } else {
     I(work[0]);
