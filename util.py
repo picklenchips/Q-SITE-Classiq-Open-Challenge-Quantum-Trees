@@ -50,7 +50,7 @@ def quantum_encode(x: list | np.ndarray) -> np.ndarray:
     norm, x = quantum_vectorize(x)
     assert isinstance(x, np.ndarray)  # for PyLance stupid type-setting
     # convert to Classiq-compatible list
-    return x.tolist()
+    return norm, x.tolist()
 
 #   parsing bitstrings   #
 def all_bitstrings(N, lsb_right=True):
@@ -171,6 +171,64 @@ def parse_classiq_result(N, rdict, print_info=True):
     # convert to amplitudes and multiply by total normalization
     y = np.sqrt(y) * N**2
     return y
+
+from classiq.synthesis import synthesize, set_constraints, set_execution_preferences, set_preferences, show
+from classiq.executor import execute
+from classiq.execution import ExecutionPreferences
+from classiq.interface.generator.quantum_program import QuantumProgram
+from classiq import Constraints, Preferences
+import time
+
+def run_qmod(qmod, opt='depth', nshots=10000, job_name='',
+                save_qprog='', sim='Classiq',
+                open_circuit=True, print_info=True):
+    """ optimize qmod with constraints and run it on a simulator 
+        - sim = 'Classiq' or 'IBM', both classical simulators though
+    """
+    # set constraints and preferences
+    if sim == 'Classiq':
+        max_width = 25
+        qmod = set_preferences(qmod,
+            Preferences(backend_service_provider="Classiq",backend_name="simulator",
+                        timeout_seconds=600, optimization_timeout_seconds=120))
+    else:
+        return ValueError('other sims not implemented yet')
+    
+    qmod = set_constraints(qmod,
+        Constraints(max_width=max_width, optimization_parameter=opt))
+    qmod = set_execution_preferences(qmod,
+        ExecutionPreferences(num_shots=nshots, job_name=job_name, 
+                            random_seed='767'))
+
+    # synthesize the circuit
+    start_time = time.time()
+    if print_info:
+        print(f"Running {job_name}")
+    qprog = synthesize(qmod)
+    QP = QuantumProgram.from_qprog(qprog)
+    circuit_width = QP.data.width
+    circuit_depth = QP.transpiled_circuit.depth
+    end_time = time.time()
+    if print_info:
+        print(f"\tcircuit synthesized in {end_time-start_time:.2f}s: width={circuit_width},depth={circuit_depth}")
+    # open in viewer
+    if open_circuit: 
+        show(qprog)
+    # save generated quantum program
+    if save_qprog:
+        write_qprog(qprog, save_qprog)
+    start_time = time.time()
+    
+    job = execute(qprog)
+    if print_info:
+        print(
+            f"\tjob with {job.num_shots} shots is {job.status} on provider-backend={job.provider}-{job.backend_name} \n\tand can be accessed at {job.ide_url}"
+        )
+    results = job.result()[0].value
+    end_time = time.time()
+    if print_info:
+        print(f"\tran in {end_time-start_time:.2f}s")
+    return results
 
 #
 # PREVIOUS UTILITY FUNCTIONS
