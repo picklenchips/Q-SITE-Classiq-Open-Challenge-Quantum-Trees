@@ -9,7 +9,7 @@ SAVEDIR = "."
 SAVEEXT = ".png"
 from classiq.synthesis import synthesize, set_constraints, set_execution_preferences, set_preferences, show
 from classiq.executor import execute
-from classiq.execution import ExecutionPreferences
+from classiq.execution import ExecutionPreferences, IBMBackendPreferences, IBMBackendProvider
 from classiq.interface.generator.quantum_program import QuantumProgram
 from classiq import Constraints, Preferences
 import time
@@ -128,7 +128,6 @@ def get_work_strings(nqubits, work_idxs, lsb_right=True, ancilla_bits=None):
                 continue
             # at next work qubit
             if qubit_idx == work_idxs[i]:
-                
                 string += work_string[i]
                 i += 1
             # at next ancilla qubit
@@ -147,16 +146,29 @@ def write_qprog(qprog, fname):
     file.write(qprog)
     file.close()
 
-def parse_classiq_result(N, rdict, print_info=True):
+def classiq_to_vec(N, rdict, register_name='work', print_info=True):
     """
     returns the amplitude vector from the classiq results
     - N: normalization factor to reconstruct vector with
     - rdict: result dictionary from classiq
+
+    assume that desired vector V = [a b] is encoded 
+    in quantum state Q=V/(N**2), where Q is a 
+    subset of the total state of the quantum system S
+    
+    we count probability P as
+    N^2 is total nornmaliz
+    P=(a^2/N^4 b^2/N^4)
+    so we can recover V as
+    V = sqrt(P) * N^2
+
+    N^2 = total norm of Q = [a b ,,,,]
+    N^2 = a^2 + b^2 + ...
     """
     total_counts = rdict.num_shots
-    # reconstruct / parse state vector
+    # reconstruct / parse state svector
     out_map = rdict.output_qubits_map   
-    vec_indices = out_map['work']         # tuple of indices
+    vec_indices = out_map[register_name]     # tuple of indices
     nbits = 2**len(vec_indices)
     y = np.zeros(nbits)
     lsb_right = rdict.counts_lsb_right  # whether output map starts from right or left of string
@@ -174,26 +186,58 @@ def parse_classiq_result(N, rdict, print_info=True):
             continue
         # convert to probabilities = amp^2
         y[j] = counts_dict[work_string] / total_counts
-    # convert to amplitudes and multiply by total normalization
-    y = np.sqrt(y) * N**2
-    return y
+    # convert to amplitudes and multiply by total normalization to get to vector yt
+    return np.sqrt(y) * N**2
+
+def gen_fake_classiq_dict(P, nqubits=4, nshots=10000, register_name='work'):
+    """P: probability vector
+    assumes lsb_right 
+    
+    P: probability vector with 2^(nwork) entries
+    nqubits: total # of qubits in system
+             nqubits - log2(len(P)) = # ancilla qubits
+    """
+    nwork = np.log2(len(P))
+    output_qubits = {register_name: list(range(nwork)),
+                     'ancilla': list(range(nwork,nqubits))}
+    all_strings = all_bitstrings(nqubits)
+    counts_dict = {}
+    ret = {'num_shots': nshots, 
+           'output_qubits_map': output_qubits,
+           'counts_lsb_right': True,
+           'counts': counts_dict}
+
+    # turn dictionary into class
+    return DictObject(ret)
+
 
 def run_qmod(qmod, opt='depth', nshots=10000, job_name='',
              save_qprog='', sim='Classiq', open_circuit=False, print_info=True):
     """ optimize qmod with constraints and run it on a simulator 
         - sim = 'Classiq' or 'IBM', both classical simulators though
     """
-    # set constraints and preferences
-    max_width = 25
-    qmod = set_preferences(qmod,
-        Preferences(backend_service_provider="Classiq",backend_name="simulator",
-                    timeout_seconds=600, optimization_timeout_seconds=120))
+    if sim == 'Classiq':
+        # set constraints and preferences
+        max_width = 25#; opt = 'depth'; nshots = 10000; job_name = 'LDE_U_no-b_t=0.143'
+        qmod = set_preferences(qmod,
+            Preferences(backend_service_provider="Classiq", backend_name="simulator"))
+    elif sim == 'IBM':
+        # REPLACE WITH YOUR OWN IBM API TOKEN!!
+        token = '0920786a03ff0a185aca85f5c4a4be13232efe6641aa5685381a1c3984ec1ed1a7fdd85fbf1967af41bebbf30f321eadb4fb7188eb830a91100133a65e9a9fb1'
+        max_width = 127
+        qmod = set_preferences(qmod,
+            IBMBackendPreferences(
+                backend_name="ibm_strasbourg",
+                access_token=token,
+                provider=IBMBackendProvider(hub = "ibm-q", group = "open", project = "main"))
+        )
     qmod = set_constraints(qmod,
         Constraints(max_width=max_width, optimization_parameter=opt))
     qmod = set_execution_preferences(qmod,
         ExecutionPreferences(num_shots=nshots, job_name=job_name, 
                             random_seed='767'))
-
+    qmod = set_preferences(qmod, Preferences(timeout_seconds=600, optimization_timeout_seconds=120))
+    qprog = synthesize(qmod)
     # synthesize the circuit
     start_time = time.time()
     if print_info:
